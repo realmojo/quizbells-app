@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "116519638071",
+    "project_id": "quizbells-2d26a",
+    "storage_bucket": "quizbells-2d26a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:116519638071:android:fd0f6b5637c8cdc21adbb2",
+        "android_client_info": {
+          "package_name": "com.mojoday.quizbells"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtM8dnXiKW_lrTjl38yZR8vA_xYIEmwqU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

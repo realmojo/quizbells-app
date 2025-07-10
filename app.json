@@ -1,22 +1,33 @@
 {
   "expo": {
-    "name": "quizbells-app",
-    "slug": "quizbells-app",
-    "version": "1.0.0",
+    "name": "퀴즈벨",
+    "slug": "퀴즈벨",
+    "version": "1.0.3",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "quizbellsapp",
+    "icon": "./assets/images/default-icon.png",
+    "scheme": "quizbells",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mojoday.quizbells"
     },
     "android": {
+      "buildType": "aab",
+      "versionCode": 3,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/default-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.mojoday.quizbells",
+      "icon": "./assets/images/default-icon.png",
+      "googleServicesFile": "./google-services.json",
+      "notification": {
+        "icon": "./assets/images/default-icon.png",
+        "color": "#0d94c7",
+        "sound": "default"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -28,12 +39,14 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/default-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#0d94c7"
         }
-      ]
+      ],
+      "expo-build-properties",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

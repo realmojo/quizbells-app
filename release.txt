@@ -1,0 +1,13 @@
+이름과 성을 입력하십시오.
+  [Unknown]:  jungmankyung
+조직 단위 이름을 입력하십시오.
+  [Unknown]:  mojoday
+조직 이름을 입력하십시오.
+  [Unknown]:  mojoday
+구/군/시 이름을 입력하십시오?
+  [Unknown]:  seoul
+시/도 이름을 입력하십시오.
+  [Unknown]:  seoul
+이 조직의 두 자리 국가 코드를 입력하십시오.
+  [Unknown]:  kr
+CN=jungmankyung, OU=mojoday, O=mojoday, L=seoul, ST=seoul, C=kr이(가) 맞습니까?
