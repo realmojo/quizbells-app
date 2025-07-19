@@ -1,19 +1,27 @@
 // app/_layout.tsx
 import { nanoid } from "nanoid/non-secure";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BackHandler, Linking, Platform, StyleSheet, View } from "react-native";
+import {
+  BackHandler,
+  Linking,
+  NativeModules,
+  Platform,
+  StyleSheet,
+  View,
+} from "react-native";
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import FirebaseNotificationHandler from "../hooks/firebaseNotificationHandler";
-
 import { getQuizbellsAuth, setQuizbellsAuth } from "../utils/utils";
+const { WebViewAds } = NativeModules;
 
-const BASE_WEBVIEW_URL =
-  "https://google.github.io/webview-ads/test/#api-for-ads-tests";
-// const BASE_WEBVIEW_URL = "https://quizbells.com";
+// const BASE_WEBVIEW_URL =
+//   "https://google.github.io/webview-ads/test/#api-for-ads-tests";
+const BASE_WEBVIEW_URL = "https://quizbells.com";
+// const BASE_WEBVIEW_URL = "https://choyoungjang.tistory.com/3";
 // const BASE_WEBVIEW_URL = "http://192.168.219.101:3000";
 
 const handleRegistrationError = (errorMessage: string) => {
@@ -27,6 +35,7 @@ export default function App() {
   const isPushInitializedRef = useRef(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [webviewUrl, setWebviewUrl] = useState(BASE_WEBVIEW_URL);
+  const [isWebViewRegistered, setIsWebViewRegistered] = useState(false);
   const lastUrlRef = useRef<string | null>(null);
 
   // FirebaseNotificationHandler 인스턴스를 useRef로 관리
@@ -36,6 +45,7 @@ export default function App() {
 
   // 2. WebView 로드 완료 후 localStorage에 저장
   const handleWebViewLoad = async () => {
+    console.log("handleWebViewLoad");
     const quizbellsAuth = await getQuizbellsAuth();
 
     if (quizbellsAuth && webViewRef.current) {
@@ -44,6 +54,69 @@ export default function App() {
       )}'); true;`;
       webViewRef.current.injectJavaScript(jsCode);
     }
+
+    if (!isWebViewRegistered) {
+      try {
+        console.log("WebView loaded, attempting registration...");
+
+        if (!WebViewAds) {
+          console.error("WebViewAds module not available");
+          return;
+        }
+
+        // 모든 WebView를 등록하는 방식으로 변경
+        const result = await WebViewAds.registerAllWebViews();
+        console.log("Registration result:", result);
+
+        setIsWebViewRegistered(true);
+
+        // 등록 후 잠시 대기 후 페이지 새로고침 ( 광고가 등록 되었는지 확인 용 )
+        // setTimeout(() => {
+        //   webViewRef.current?.reload();
+        // }, 10000);
+      } catch (error) {
+        console.error("WebView registration error:", error);
+      }
+    }
+  };
+
+  const handleShouldStartLoadWithRequest = (request: any): boolean => {
+    const { url } = request;
+
+    // Android Play Store 링크
+    if (url.includes("play.google.com/store/apps/details")) {
+      const packageMatch = url.match(/id=([^&\/#]+)/);
+      if (packageMatch) {
+        const packageName = packageMatch[1];
+
+        // 1. Intent URL로 앱 직접 실행 시도
+        const intentUrl = `intent://app#Intent;package=${packageName};end`;
+        console.log("intentUrl", intentUrl);
+        Linking.openURL(intentUrl).catch(() => {
+          // 2. Market URL로 시도
+          const marketUrl = `market://details?id=${packageName}`;
+          console.log("marketUrl", marketUrl);
+          Linking.openURL(marketUrl).catch(() => {
+            // 3. 웹 Play Store로 fallback
+            console.log("url", url);
+            Linking.openURL(url);
+          });
+        });
+        console.log("url", url);
+        Linking.openURL(url);
+      } else {
+        Linking.openURL(url);
+      }
+      return false;
+    }
+
+    // iOS App Store 링크는 그대로 처리
+    if (url.includes("apps.apple.com")) {
+      Linking.openURL(url);
+      return false;
+    }
+
+    return true;
   };
 
   const handleMessage = (event: any) => {
@@ -207,7 +280,7 @@ export default function App() {
             marginTop: insets.top,
             marginBottom: insets.bottom,
           }}
-          allowsPictureInPictureMediaPlayback={false}
+          mediaPlaybackRequiresUserAction={false}
           thirdPartyCookiesEnabled={true}
           javaScriptEnabled={true}
           domStorageEnabled={true}
@@ -215,7 +288,7 @@ export default function App() {
           scalesPageToFit={false}
           onLoadEnd={handleWebViewLoad}
           onNavigationStateChange={handleNavigationStateChange}
-          // onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
+          onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest} // 🔥 이 줄 추가
           onMessage={handleMessage}
           onError={handleError}
           injectedJavaScript={`
