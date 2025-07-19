@@ -92,8 +92,8 @@ android {
         applicationId 'com.mojoday.quizbells'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.0.3"
+        versionCode 4
+        versionName "1.0.4"
     }
     signingConfigs {
         debug {
@@ -156,7 +156,8 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
-    // implementation("com.google.android.gms:play-services-ads:24.4.0")
+    implementation("com.google.android.gms:play-services-ads:24.4.0")
+
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";

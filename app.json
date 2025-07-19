@@ -2,7 +2,7 @@
   "expo": {
     "name": "퀴즈벨",
     "slug": "퀴즈벨",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/default-icon.png",
     "scheme": "quizbells",
@@ -10,11 +10,19 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mojoday.quizbells"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "bundleIdentifier": "com.mojoday.quizbells",
+      "entitlements": {
+        "aps-environment": "production"
+      },
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"],
+        "FirebaseAppDelegateProxyEnabled": false
+      }
     },
     "android": {
       "buildType": "aab",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/default-icon.png",
         "backgroundColor": "#ffffff"
