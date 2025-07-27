@@ -7,7 +7,6 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.UiThreadUtil
-import com.google.android.gms.ads.MobileAds
 import android.util.Log
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.facebook.react.bridge.WritableMap
@@ -47,8 +46,7 @@ class WebViewAdsModule(reactContext: ReactApplicationContext) : ReactContextBase
             view.settings.domStorageEnabled = true
             view.settings.mediaPlaybackRequiresUserGesture = false
             
-            // WebView 등록
-            MobileAds.registerWebView(view)
+            // WebView 등록 (Google Mobile Ads 없이)
             Log.d("WebViewAds", "WebView registered: ${view.javaClass.simpleName}")
         } else if (view is android.view.ViewGroup) {
             for (i in 0 until view.childCount) {

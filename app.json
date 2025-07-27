@@ -7,7 +7,7 @@
     "icon": "./assets/images/default-icon.png",
     "scheme": "quizbells",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -45,6 +45,7 @@
     "plugins": [
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
+      "expo-secure-store",
       "expo-router",
       [
         "expo-splash-screen",
@@ -55,8 +56,14 @@
           "backgroundColor": "#0d94c7"
         }
       ],
-      "expo-build-properties",
-      "expo-secure-store"
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "dynamic"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

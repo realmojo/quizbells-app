@@ -13,14 +13,25 @@ import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+
 import { WebView } from "react-native-webview";
 import FirebaseNotificationHandler from "../hooks/firebaseNotificationHandler";
 import { getQuizbellsAuth, setQuizbellsAuth } from "../utils/utils";
-const { WebViewAds } = NativeModules;
 
-// const BASE_WEBVIEW_URL =
-//   "https://google.github.io/webview-ads/test/#api-for-ads-tests";
-const BASE_WEBVIEW_URL = "https://quizbells.com";
+// 안전한 네이티브 모듈 접근
+const getWebViewAdsModule = () => {
+  try {
+    return NativeModules.WebViewAds;
+  } catch (error) {
+    console.warn("WebViewAds 모듈을 찾을 수 없습니다:", error);
+    return null;
+  }
+};
+
+const BASE_WEBVIEW_URL =
+  "https://google.github.io/webview-ads/test/#api-for-ads-tests";
+// const BASE_WEBVIEW_URL = "https://coinpan.com";
+// const BASE_WEBVIEW_URL = "https://quizbells.com";
 // const BASE_WEBVIEW_URL = "https://choyoungjang.tistory.com/3";
 // const BASE_WEBVIEW_URL = "http://192.168.219.101:3000";
 
@@ -47,7 +58,6 @@ export default function App() {
   const handleWebViewLoad = async () => {
     console.log("handleWebViewLoad");
     const quizbellsAuth = await getQuizbellsAuth();
-
     if (quizbellsAuth && webViewRef.current) {
       const jsCode = `localStorage.setItem("quizbells-auth", '${JSON.stringify(
         quizbellsAuth
@@ -55,27 +65,70 @@ export default function App() {
       webViewRef.current.injectJavaScript(jsCode);
     }
 
-    if (!isWebViewRegistered) {
-      try {
-        console.log("WebView loaded, attempting registration...");
+    if (Platform.OS === "android") {
+      if (!isWebViewRegistered) {
+        try {
+          console.log("WebView loaded, attempting registration...");
 
-        if (!WebViewAds) {
-          console.error("WebViewAds module not available");
-          return;
+          const WebViewAds = getWebViewAdsModule();
+          if (!WebViewAds) {
+            console.error("WebViewAds module not available Android");
+            return;
+          }
+
+          // 모든 WebView를 등록하는 방식으로 변경
+          const result = await WebViewAds.registerAllWebViews();
+          console.log("Registration result:", result);
+
+          setIsWebViewRegistered(true);
+
+          // 등록 후 잠시 대기 후 페이지 새로고침 ( 광고가 등록 되었는지 확인 용 )
+          // setTimeout(() => {
+          //   webViewRef.current?.reload();
+          // }, 10000);
+        } catch (error) {
+          console.error("WebView registration error:", error);
+        }
+      }
+    } else if (Platform.OS === "ios") {
+      try {
+        console.log("iOS WebView loaded, starting initialization...");
+        const WebViewAds = getWebViewAdsModule();
+        console.log("WebViewAds 모듈 체크:", WebViewAds);
+        if (WebViewAds) {
+          WebViewAds.registerAllWebViews()
+            .then((result: any) => console.log("✅ WebView 모듈 작동:", result))
+            .catch((error: any) =>
+              console.error("❌ WebView 모듈 오류:", error)
+            );
         }
 
-        // 모든 WebView를 등록하는 방식으로 변경
-        const result = await WebViewAds.registerAllWebViews();
-        console.log("Registration result:", result);
+        // localStorage 설정 코드...
 
-        setIsWebViewRegistered(true);
+        console.log("isWebViewRegistered", isWebViewRegistered);
+        console.log("WebViewAds", WebViewAds);
+        // WebViewAds 등록
+        if (!isWebViewRegistered) {
+          console.log("iOS WebView ads registration starting...");
 
-        // 등록 후 잠시 대기 후 페이지 새로고침 ( 광고가 등록 되었는지 확인 용 )
-        // setTimeout(() => {
-        //   webViewRef.current?.reload();
-        // }, 10000);
+          const WebViewAds = getWebViewAdsModule();
+          if (!WebViewAds) {
+            console.error("WebViewAds module not available on iOS");
+            return;
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // iOS에서 더 긴 대기
+
+          try {
+            const result = await WebViewAds.registerAllWebViews();
+            console.log("iOS Registration result:", result);
+            setIsWebViewRegistered(true);
+          } catch (registrationError) {
+            console.error("iOS WebView registration error:", registrationError);
+          }
+        }
       } catch (error) {
-        console.error("WebView registration error:", error);
+        console.error("iOS handleWebViewLoad error:", error);
       }
     }
   };
@@ -280,6 +333,19 @@ export default function App() {
             marginTop: insets.top,
             marginBottom: insets.bottom,
           }}
+          // iOS 광고 최적화 설정
+          {...(Platform.OS === "ios" && {
+            thirdPartyCookiesEnabled: true, // 시도는 하되 제한될 수 있음
+            sharedCookiesEnabled: true, // Safari와 쿠키 공유
+            allowsInlineMediaPlayback: true,
+            cacheEnabled: true, // 캐시 활성화로 성능 개선
+            incognito: false, // 비공개 모드 비활성화
+            bounces: false,
+            scrollEnabled: true,
+            automaticallyAdjustContentInsets: false,
+            // iOS 14+ 에서 tracking 허용 시도
+            allowsBackForwardNavigationGestures: false,
+          })}
           mediaPlaybackRequiresUserAction={false}
           thirdPartyCookiesEnabled={true}
           javaScriptEnabled={true}
