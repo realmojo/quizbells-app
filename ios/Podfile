@@ -11,10 +11,16 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 install! 'cocoapods',
   :deterministic_uuids => false
 
+# Firebase 문제 해결을 위한 모듈 헤더
+use_modular_headers!
+
 prepare_react_native_project!
 
 target 'app' do
   use_expo_modules!
+  
+  # 정적 라이브러리 사용 (RNReanimated 문제 해결)
+  use_frameworks! :linkage => :static
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
     config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];
@@ -31,9 +37,6 @@ target 'app' do
 
   config = use_native_modules!(config_command)
 
-  use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
-  use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
-
   use_react_native!(
     :path => config[:reactNativePath],
     :hermes_enabled => podfile_properties['expo.jsEngine'] == nil || podfile_properties['expo.jsEngine'] == 'hermes',
@@ -41,10 +44,8 @@ target 'app' do
     :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
   )
 
-  # Firebase 관련 pods에 모듈 헤더 명시적 적용
-  pod 'GoogleUtilities', :modular_headers => true
-  pod 'FirebaseCoreInternal', :modular_headers => true
-  pod 'FirebaseCore', :modular_headers => true
+  # Google Mobile Ads SDK 추가
+  pod 'Google-Mobile-Ads-SDK'
 
   post_install do |installer|
     react_native_post_install(
@@ -54,13 +55,11 @@ target 'app' do
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
 
-    # Firebase 및 Google 관련 pods에 모듈 설정 적용
+    # React Native 모듈의 react_runtime 충돌 방지
     installer.pods_project.targets.each do |target|
-      if target.name.start_with?('Firebase') || target.name.start_with?('Google')
+      if target.name.start_with?('React-') && target.name.include?('Runtime')
         target.build_configurations.each do |config|
-          config.build_settings['DEFINES_MODULE'] = 'YES'
-          config.build_settings['CLANG_ENABLE_MODULES'] = 'YES'
-          config.build_settings['SWIFT_INCLUDE_PATHS'] = '$(inherited) $(PODS_TARGET_SRCROOT)'
+          config.build_settings['DEFINES_MODULE'] = 'NO'
         end
       end
     end

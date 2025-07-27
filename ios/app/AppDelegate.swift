@@ -2,6 +2,8 @@ import Expo
 import FirebaseCore
 import React
 import ReactAppDependencyProvider
+import UserNotifications
+import GoogleMobileAds
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
@@ -24,9 +26,36 @@ public class AppDelegate: ExpoAppDelegate {
 
 #if os(iOS) || os(tvOS)
     window = UIWindow(frame: UIScreen.main.bounds)
-// @generated begin @react-native-firebase/app-didFinishLaunchingWithOptions - expo prebuild (DO NOT MODIFY) sync-10e8520570672fd76b2403b7e1e27f5198a6349a
-FirebaseApp.configure()
-// @generated end @react-native-firebase/app-didFinishLaunchingWithOptions
+    
+    // Firebase 초기화
+    FirebaseApp.configure()
+    
+    // 🔥 수정: GADMobileAds → MobileAds, sharedInstance → shared
+    // Google Mobile Ads 초기화 부분
+    // GADMobileAds.sharedInstance.start { status in
+    //   print("✅ Google Mobile Ads SDK initialized")
+    //   print("Initialization status: \(status.adapterStatusesByClassName)")
+    // }
+    MobileAds.shared.start { status in
+      print("✅ Google Mobile Ads SDK initialized (11.x)")
+      print("Initialization status: \(status.adapterStatusesByClassName)")
+    }
+
+    // Push 알림 권한 요청 및 설정
+    UNUserNotificationCenter.current().delegate = self
+    let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+    UNUserNotificationCenter.current().requestAuthorization(
+      options: authOptions,
+      completionHandler: { granted, error in
+        if granted {
+          print("✅ 알림 권한 허용됨")
+        } else {
+          print("❌ 알림 권한 거부됨: \(String(describing: error))")
+        }
+      }
+    )
+    application.registerForRemoteNotifications()
+
     factory.startReactNative(
       withModuleName: "main",
       in: window,
@@ -34,6 +63,17 @@ FirebaseApp.configure()
 #endif
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  // Push 알림 토큰 등록 (FirebaseMessaging 없이)
+  public override func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    // FirebaseMessaging 대신 직접 처리
+    let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
+    let token = tokenParts.joined()
+    print("APNS Token: \(token)")
   }
 
   // Linking API
@@ -56,11 +96,27 @@ FirebaseApp.configure()
   }
 }
 
-class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
-  // Extension point for config-plugins
+// Push 알림 처리를 위한 UNUserNotificationCenterDelegate 구현
+extension AppDelegate: UNUserNotificationCenterDelegate {
+  public func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    completionHandler([[.alert, .sound]])
+  }
 
+  public func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    completionHandler()
+  }
+}
+
+class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
   override func sourceURL(for bridge: RCTBridge) -> URL? {
-    // needed to return the correct URL for expo-dev-client.
     bridge.bundleURL ?? bundleURL()
   }
 

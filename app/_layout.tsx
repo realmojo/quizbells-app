@@ -21,7 +21,25 @@ import { getQuizbellsAuth, setQuizbellsAuth } from "../utils/utils";
 // 안전한 네이티브 모듈 접근
 const getWebViewAdsModule = () => {
   try {
-    return NativeModules.WebViewAds;
+    console.log("=== 네이티브 모듈 디버깅 ===");
+    console.log("전체 NativeModules 키들:", Object.keys(NativeModules));
+    console.log(
+      "WebViewAdsModule 존재 여부:",
+      !!NativeModules.WebViewAdsModule
+    );
+
+    if (NativeModules.WebViewAdsModule) {
+      console.log("✅ WebViewAdsModule 찾음!");
+      console.log(
+        "사용 가능한 메서드들:",
+        Object.keys(NativeModules.WebViewAdsModule)
+      );
+    } else {
+      console.log("❌ WebViewAdsModule 없음");
+    }
+    console.log("========================");
+
+    return NativeModules.WebViewAdsModule;
   } catch (error) {
     console.warn("WebViewAds 모듈을 찾을 수 없습니다:", error);
     return null;
@@ -54,9 +72,11 @@ export default function App() {
     null
   );
 
-  // 2. WebView 로드 완료 후 localStorage에 저장
+  // WebView 로드 완료 후 처리
   const handleWebViewLoad = async () => {
-    console.log("handleWebViewLoad");
+    console.log("handleWebViewLoad111");
+
+    // localStorage에 인증 정보 저장
     const quizbellsAuth = await getQuizbellsAuth();
     if (quizbellsAuth && webViewRef.current) {
       const jsCode = `localStorage.setItem("quizbells-auth", '${JSON.stringify(
@@ -65,130 +85,191 @@ export default function App() {
       webViewRef.current.injectJavaScript(jsCode);
     }
 
-    if (Platform.OS === "android") {
-      if (!isWebViewRegistered) {
-        try {
-          console.log("WebView loaded, attempting registration...");
-
-          const WebViewAds = getWebViewAdsModule();
-          if (!WebViewAds) {
-            console.error("WebViewAds module not available Android");
-            return;
-          }
-
-          // 모든 WebView를 등록하는 방식으로 변경
-          const result = await WebViewAds.registerAllWebViews();
-          console.log("Registration result:", result);
-
-          setIsWebViewRegistered(true);
-
-          // 등록 후 잠시 대기 후 페이지 새로고침 ( 광고가 등록 되었는지 확인 용 )
-          // setTimeout(() => {
-          //   webViewRef.current?.reload();
-          // }, 10000);
-        } catch (error) {
-          console.error("WebView registration error:", error);
-        }
-      }
-    } else if (Platform.OS === "ios") {
+    // 플랫폼별 WebView 등록
+    if (!isWebViewRegistered) {
       try {
-        console.log("iOS WebView loaded, starting initialization...");
+        console.log(
+          `${Platform.OS} WebView loaded, attempting registration...`
+        );
+
         const WebViewAds = getWebViewAdsModule();
-        console.log("WebViewAds 모듈 체크:", WebViewAds);
-        if (WebViewAds) {
-          WebViewAds.registerAllWebViews()
-            .then((result: any) => console.log("✅ WebView 모듈 작동:", result))
-            .catch((error: any) =>
-              console.error("❌ WebView 모듈 오류:", error)
-            );
+        if (!WebViewAds) {
+          console.error(`WebViewAds module not available on ${Platform.OS}`);
+
+          // iOS에서 모듈이 없으면 JavaScript 레벨에서 처리
+          if (Platform.OS === "ios" && webViewRef.current) {
+            console.log("iOS에서 JavaScript 레벨 광고 최적화 시도...");
+            const optimizationScript = `
+            (function() {
+              // Google Ads 최적화
+              window.GADWebViewAdsOptimized = true;
+              console.log('✅ iOS WebView 광고 최적화 완료');
+              
+              // Google Ads API 확인
+              const checkGoogleAds = setInterval(() => {
+                if (typeof googletag !== 'undefined' || typeof google !== 'undefined') {
+                  console.log('🎯 Google Ads API 감지됨');
+                  clearInterval(checkGoogleAds);
+                }
+              }, 1000);
+              
+              return true;
+            })();
+          `;
+            webViewRef.current.injectJavaScript(optimizationScript);
+          }
+          return;
         }
 
-        // localStorage 설정 코드...
+        // 네이티브 모듈을 통한 등록
+        const delay = Platform.OS === "ios" ? 2000 : 500;
 
-        console.log("isWebViewRegistered", isWebViewRegistered);
-        console.log("WebViewAds", WebViewAds);
-        // WebViewAds 등록
-        if (!isWebViewRegistered) {
-          console.log("iOS WebView ads registration starting...");
-
-          const WebViewAds = getWebViewAdsModule();
-          if (!WebViewAds) {
-            console.error("WebViewAds module not available on iOS");
-            return;
-          }
-
-          await new Promise((resolve) => setTimeout(resolve, 1000)); // iOS에서 더 긴 대기
-
+        setTimeout(async () => {
           try {
+            console.log(`${Platform.OS} WebView 등록 시도 중...`);
             const result = await WebViewAds.registerAllWebViews();
-            console.log("iOS Registration result:", result);
+            console.log(`${Platform.OS} Registration result:`, result);
             setIsWebViewRegistered(true);
+
+            console.log(webViewRef.current);
+            // 등록 성공 후 확인
+            if (webViewRef.current) {
+              const confirmScript = `
+              console.log('✅ WebView가 GMA SDK와 연결되었습니다');
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'webview-registered',
+                platform: '${Platform.OS}',
+                success: true
+              }));
+            `;
+              webViewRef.current.injectJavaScript(confirmScript);
+
+              // 🔥 등록 완료 후 5초 뒤 새로고침으로 광고 연결 확인
+              setTimeout(() => {
+                console.log("📄 WebView 등록 완료 후 새로고침 실행...");
+                if (webViewRef.current) {
+                  webViewRef.current.reload();
+                }
+              }, 5000);
+            }
           } catch (registrationError) {
-            console.error("iOS WebView registration error:", registrationError);
+            console.error(
+              `${Platform.OS} WebView registration error:`,
+              registrationError
+            );
+
+            // 실패 시 대체 방법
+            if (Platform.OS === "ios" && webViewRef.current) {
+              const fallbackScript = `
+              console.log('⚠️ 네이티브 등록 실패, JavaScript 최적화로 대체');
+              window.GADWebViewFallback = true;
+            `;
+              webViewRef.current.injectJavaScript(fallbackScript);
+            }
           }
-        }
+        }, delay);
       } catch (error) {
-        console.error("iOS handleWebViewLoad error:", error);
+        console.error(`${Platform.OS} WebView registration error:`, error);
       }
     }
   };
 
-  const handleShouldStartLoadWithRequest = (request: any): boolean => {
-    const { url } = request;
+  // 🔥 새로고침 및 광고 연결 상태 확인 함수 추가
+  const checkAndRefreshWebView = useCallback(() => {
+    if (webViewRef.current) {
+      console.log("🔄 WebView 광고 연결 상태 확인 중...");
 
-    // Android Play Store 링크
-    if (url.includes("play.google.com/store/apps/details")) {
-      const packageMatch = url.match(/id=([^&\/#]+)/);
-      if (packageMatch) {
-        const packageName = packageMatch[1];
+      // 광고 연결 상태 확인용 JavaScript 주입
+      const checkConnectionScript = `
+      (function() {
+        console.log('=== WebView 광고 연결 상태 확인 ===');
+        
+        // GMA SDK 연결 확인
+        const isGMAConnected = window.GADWebViewAdsOptimized || window.GADWebViewFallback;
+        console.log('GMA SDK 연결 상태:', isGMAConnected ? '✅ 연결됨' : '❌ 연결 안됨');
+        
+        // Google Ads API 확인
+        const hasGoogleAds = typeof googletag !== 'undefined' || typeof google !== 'undefined';
+        console.log('Google Ads API 상태:', hasGoogleAds ? '✅ 사용 가능' : '❌ 사용 불가');
+        
+        // 현재 페이지에 광고 요소 확인
+        const adElements = document.querySelectorAll('[data-ad-client], [data-ad-slot], .adsbygoogle, ins.adsbygoogle');
+        console.log('페이지 광고 요소 개수:', adElements.length);
+        
+        // 결과를 React Native로 전송
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'ad-connection-check',
+          gmaConnected: isGMAConnected,
+          googleAdsAPI: hasGoogleAds,
+          adElementsCount: adElements.length,
+          url: window.location.href
+        }));
+        
+        console.log('================================');
+        return true;
+      })();
+    `;
 
-        // 1. Intent URL로 앱 직접 실행 시도
-        const intentUrl = `intent://app#Intent;package=${packageName};end`;
-        console.log("intentUrl", intentUrl);
-        Linking.openURL(intentUrl).catch(() => {
-          // 2. Market URL로 시도
-          const marketUrl = `market://details?id=${packageName}`;
-          console.log("marketUrl", marketUrl);
-          Linking.openURL(marketUrl).catch(() => {
-            // 3. 웹 Play Store로 fallback
-            console.log("url", url);
-            Linking.openURL(url);
-          });
-        });
-        console.log("url", url);
-        Linking.openURL(url);
-      } else {
-        Linking.openURL(url);
-      }
-      return false;
+      webViewRef.current.injectJavaScript(checkConnectionScript);
     }
+  }, []);
 
-    // iOS App Store 링크는 그대로 처리
-    if (url.includes("apps.apple.com")) {
-      Linking.openURL(url);
-      return false;
+  // 🔥 수동 새로고침 함수 (디버깅용)
+  const manualRefreshWebView = useCallback(() => {
+    console.log("🔄 수동 WebView 새로고침 실행...");
+    if (webViewRef.current) {
+      webViewRef.current.reload();
     }
+  }, []);
 
-    return true;
-  };
-
+  // handleMessage 함수 수정
   const handleMessage = (event: any) => {
     const message = event.nativeEvent.data;
     console.log("WebView Message: ", message);
+
+    try {
+      const parsed = JSON.parse(message);
+
+      if (parsed.type === "webview-registered") {
+        console.log("🎉 WebView 등록 완료:", parsed);
+      } else if (parsed.type === "ad-connection-check") {
+        console.log("📊 광고 연결 상태:", parsed);
+
+        // 연결 상태에 따른 자동 처리
+        if (!parsed.gmaConnected && !parsed.googleAdsAPI) {
+          console.log("⚠️ 광고 연결 문제 감지, 10초 후 재시도...");
+          setTimeout(() => {
+            manualRefreshWebView();
+          }, 10000);
+        }
+      } else if (parsed.type === "ad-loaded") {
+        console.log("📢 광고 로드됨:", parsed.src);
+      } else if (parsed.type === "console") {
+        console.log("📱 WebView Console:", parsed.message);
+      }
+    } catch (e) {
+      // JSON이 아닌 일반 메시지 처리
+      if (message.includes("Google Ads") || message.includes("광고")) {
+        console.log("📢 광고 관련 메시지:", message);
+      }
+    }
   };
 
-  // 🔧 콜백 함수 정의
+  // 🔥 주기적 광고 연결 확인 (선택적)
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (isWebViewRegistered) {
+        checkAndRefreshWebView();
+      }
+    }, 30000); // 30초마다 확인
+
+    return () => clearInterval(intervalId);
+  }, [isWebViewRegistered, checkAndRefreshWebView]);
+
   const reloadWebView = useCallback(
     (link: string) => {
       console.log("기존 URL:", webviewUrl);
       console.log("새로운 URL:", link);
-
-      // 1. 현재 로딩 중단
-      // if (webViewRef.current) {
-      //   webViewRef.current.stopLoading();
-      // }
-
-      // 2. URL 상태 변경
       setWebviewUrl(link);
     },
     [webviewUrl]
@@ -244,11 +325,10 @@ export default function App() {
         // 테스트 알림
         setTimeout(() => handler.showTestNotification(), 5000);
         // URL 전환
-        isPushInitializedRef.current = true; // ✅ 이 시점에만 true로 변경
+        isPushInitializedRef.current = true;
       } catch (e) {
         handleRegistrationError(`${e}`);
       } finally {
-        // setWebviewUrl(`${BASE_WEBVIEW_URL}/quiz`);
         setWebviewUrl(`${BASE_WEBVIEW_URL}`);
       }
     };
@@ -258,7 +338,7 @@ export default function App() {
     return () => {
       notificationHandlerRef.current?.cleanup();
       notificationHandlerRef.current = null;
-      isPushInitializedRef.current = false; // ✅ 이 시점에만 true로 변경
+      isPushInitializedRef.current = false;
     };
   }, []);
 
@@ -319,6 +399,45 @@ export default function App() {
     }
   };
 
+  const handleShouldStartLoadWithRequest = (request: any): boolean => {
+    const { url } = request;
+
+    // Android Play Store 링크
+    if (url.includes("play.google.com/store/apps/details")) {
+      const packageMatch = url.match(/id=([^&\/#]+)/);
+      if (packageMatch) {
+        const packageName = packageMatch[1];
+
+        // 1. Intent URL로 앱 직접 실행 시도
+        const intentUrl = `intent://app#Intent;package=${packageName};end`;
+        console.log("intentUrl", intentUrl);
+        Linking.openURL(intentUrl).catch(() => {
+          // 2. Market URL로 시도
+          const marketUrl = `market://details?id=${packageName}`;
+          console.log("marketUrl", marketUrl);
+          Linking.openURL(marketUrl).catch(() => {
+            // 3. 웹 Play Store로 fallback
+            console.log("url", url);
+            Linking.openURL(url);
+          });
+        });
+        console.log("url", url);
+        Linking.openURL(url);
+      } else {
+        Linking.openURL(url);
+      }
+      return false;
+    }
+
+    // iOS App Store 링크는 그대로 처리
+    if (url.includes("apps.apple.com")) {
+      Linking.openURL(url);
+      return false;
+    }
+
+    return true;
+  };
+
   useEffect(() => {
     console.log("webviewUrl이 변경됨:", webviewUrl);
   }, [webviewUrl]);
@@ -335,16 +454,17 @@ export default function App() {
           }}
           // iOS 광고 최적화 설정
           {...(Platform.OS === "ios" && {
-            thirdPartyCookiesEnabled: true, // 시도는 하되 제한될 수 있음
-            sharedCookiesEnabled: true, // Safari와 쿠키 공유
-            allowsInlineMediaPlayback: true,
-            cacheEnabled: true, // 캐시 활성화로 성능 개선
-            incognito: false, // 비공개 모드 비활성화
+            thirdPartyCookiesEnabled: true,
+            sharedCookiesEnabled: true,
+            allowsInlineMediaPlaybook: true,
+            cacheEnabled: true,
+            incognito: false,
             bounces: false,
             scrollEnabled: true,
             automaticallyAdjustContentInsets: false,
-            // iOS 14+ 에서 tracking 허용 시도
             allowsBackForwardNavigationGestures: false,
+            limitsNavigationsToAppBoundDomains: false,
+            textInteractionEnabled: true,
           })}
           mediaPlaybackRequiresUserAction={false}
           thirdPartyCookiesEnabled={true}
@@ -354,18 +474,46 @@ export default function App() {
           scalesPageToFit={false}
           onLoadEnd={handleWebViewLoad}
           onNavigationStateChange={handleNavigationStateChange}
-          onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest} // 🔥 이 줄 추가
+          onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
           onMessage={handleMessage}
           onError={handleError}
+          // 광고 최적화를 위한 User Agent 설정
+          userAgent={
+            Platform.OS === "ios"
+              ? "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
+              : undefined
+          }
           injectedJavaScript={`
-            (function() {a
+            (function() {
+              // 콘솔 로그 캡처
               const originalConsoleLog = console.log;
               console.log = function(message) {
-                window.ReactNativeWebView.postMessage(message);
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'console',
+                  message: message
+                }));
                 originalConsoleLog(message);
-              }
+              };
+              
+              // 광고 로드 감지
+              const originalCreateElement = document.createElement;
+              document.createElement = function(tagName) {
+                const element = originalCreateElement.call(document, tagName);
+                if (tagName.toLowerCase() === 'script' || tagName.toLowerCase() === 'iframe') {
+                  element.addEventListener('load', function() {
+                    if (this.src && (this.src.includes('googlesyndication') || this.src.includes('googleads'))) {
+                      window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'ad-loaded',
+                        src: this.src
+                      }));
+                    }
+                  });
+                }
+                return element;
+              };
+              
+              return true;
             })();
-            true;
           `}
         />
       </View>
