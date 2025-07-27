@@ -46,12 +46,8 @@ const getWebViewAdsModule = () => {
   }
 };
 
-const BASE_WEBVIEW_URL =
-  "https://google.github.io/webview-ads/test/#api-for-ads-tests";
-// const BASE_WEBVIEW_URL = "https://coinpan.com";
-// const BASE_WEBVIEW_URL = "https://quizbells.com";
-// const BASE_WEBVIEW_URL = "https://choyoungjang.tistory.com/3";
-// const BASE_WEBVIEW_URL = "http://192.168.219.101:3000";
+// const BASE_WEBVIEW_URL = "https://google.github.io/webview-ads/test/#api-for-ads-tests";
+const BASE_WEBVIEW_URL = "https://quizbells.com";
 
 const handleRegistrationError = (errorMessage: string) => {
   alert(errorMessage);
@@ -243,9 +239,9 @@ export default function App() {
           }, 10000);
         }
       } else if (parsed.type === "ad-loaded") {
-        console.log("📢 광고 로드됨:", parsed.src);
+        console.log("📢 광고 로드됨");
       } else if (parsed.type === "console") {
-        console.log("📱 WebView Console:", parsed.message);
+        console.log("📱 WebView Console");
       }
     } catch (e) {
       // JSON이 아닌 일반 메시지 처리

@@ -27,8 +27,7 @@ class WebViewAdsModule: NSObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
           let retryWebViews = self.findAllWebViews()
           for webView in retryWebViews {
-            // 🔥 정확한 API: GADMobileAds.sharedInstance.register
-            GADMobileAds.sharedInstance().register(webView)
+            MobileAds.shared.register(webView)
             registeredCount += 1
             print("✅ WebView registered: \(webView)")
           }
@@ -41,8 +40,7 @@ class WebViewAdsModule: NSObject {
         }
       } else {
         for webView in webViews {
-          // 🔥 정확한 API: GADMobileAds.sharedInstance.register
-          GADMobileAds.sharedInstance.register(webView)
+          MobileAds.shared.register(webView)
           registeredCount += 1
           print("✅ WebView registered: \(webView)")
         }
